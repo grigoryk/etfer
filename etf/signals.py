@@ -12,6 +12,7 @@ processors = {
     "iSHARES": {
         "date_format": "%b %d, %Y",
         "fields": 18,
+        "first": "Ticker",
         "etf": {
             "name": 0,
             "as_of_date": 1,
@@ -42,6 +43,7 @@ processors = {
     "BlackRock": {
         "date_format": "%b %d, %Y",
         "fields": 10,
+        "first": "Ticker",
         "etf": {
             "name": 0,
             "as_of_date": 1,
@@ -60,6 +62,66 @@ processors = {
             "price": 3,
             "exchange": 9,
         }
+    },
+    "BlackRock2": {
+        "date_format": "%b %d, %Y",
+        "fields": 15,
+        "first": "Ticker",
+        "etf": {
+            "name": 0,
+            "as_of_date": 1,
+            "inception_date": 2,
+            "shares_outstanding": 4,
+        },
+        "asset": {
+            "ticker": 0,
+            "name": 1,
+            "sector": 7,
+            # "class": 3,
+            "market_value": 5,
+            "weight": 2,
+            "notional_value": 6,
+            "shares": 4,
+            "cusip": 9,
+            # "isin": 9,
+            "sedol": 8,
+            "price": 3,
+            "location": 11,
+            "exchange": 10,
+            "currency": 12,
+            "fx_rate": 14,
+            "market_currency": 13,
+            # "accrual_date": 17,
+        }
+    },
+    "SPDR": {
+        "date_format": "%d-%b-%Y",
+        "fields": 8,
+        "first": "Name",
+        "etf": {
+            "name": 0,
+            "as_of_date": 1
+        },
+        "asset": {
+            "ticker": 1,
+            "name": 0,
+            "sector": 5,
+            # "class": 3,
+            # "market_value": 4,
+            "weight": 4,
+            # "notional_value": 6,
+            "shares": 6,
+            "cusip": 2,
+            # "isin": 9,
+            "sedol": 3,
+            # "price": 11,
+            # "location": 12,
+            # "exchange": 13,
+            # "currency": 14,
+            # "fx_rate": 15,
+            "market_currency": 7,
+            # "accrual_date": 17,
+        }
     }
 }
 
@@ -74,19 +136,30 @@ def process_raw_data(sender, instance: RawData, **kwargs):
     elif instance.provider.name == "BlackRock":
         process_with_format(instance, reader, processors["BlackRock"])
 
+    elif instance.provider.name == "BlackRock2":
+        process_with_format(instance, reader, processors["BlackRock2"])
+
+    elif instance.provider.name == "SPDR":
+        process_with_format(instance, reader, processors["SPDR"])
+
 def process_with_format(instance, reader, fmt):
     reader = list(reader)
 
     etf_fmt = fmt["etf"]
     name = reader[etf_fmt["name"]][0]
-    holdings_as_of = reader[etf_fmt["as_of_date"]][1]
-    inception_date = reader[etf_fmt["inception_date"]][1]
-    shares_outstanding = reader[etf_fmt["shares_outstanding"]][1]
-
     etf, _ = Etf.objects.get_or_create(name=name, provider=instance.provider)
-    etf.inception_date = datetime.strptime(inception_date, fmt["date_format"])
+
+    holdings_as_of = reader[etf_fmt["as_of_date"]][1]
     etf.holdings_last_updated = datetime.strptime(holdings_as_of, fmt["date_format"])
-    etf.shares_outstanding = int(float(shares_outstanding.replace(',', '')))
+
+    if "inception_date" in etf_fmt:
+        inception_date = reader[etf_fmt["inception_date"]][1]
+        etf.inception_date = datetime.strptime(inception_date, fmt["date_format"])
+
+    if "shares_outstanding" in etf_fmt:
+        shares_outstanding = reader[etf_fmt["shares_outstanding"]][1]
+        etf.shares_outstanding = int(float(shares_outstanding.replace(',', '')))
+
     etf.save()
 
     overrides = eval(instance.overrides)
@@ -94,41 +167,44 @@ def process_with_format(instance, reader, fmt):
     asset_fmt = fmt["asset"]
 
     for row in reader:
-        if len(row) != fmt["fields"] or row[0] == "Ticker":
+        if len(row) != fmt["fields"] or row[0] == fmt["first"]:
             continue
 
-        asset, _ = Asset.objects.get_or_create(name=row[asset_fmt["name"]], ticker=row[asset_fmt["ticker"]])
+        asset, _ = Asset.objects.get_or_create(ticker=row[asset_fmt["ticker"]])
 
-        if "cusip" in asset_fmt:
+        if not asset.name:
+            asset.name = row[asset_fmt["name"]]
+
+        if not asset.cusip and "cusip" in asset_fmt:
             asset.cusip = row[asset_fmt["cusip"]]
 
-        if "isin" in asset_fmt:
+        if not asset.isin and "isin" in asset_fmt:
             asset.isin = row[asset_fmt["isin"]]
 
-        if "sedol" in asset_fmt:
+        if not asset.sedol and "sedol" in asset_fmt:
             asset.sedol = row[asset_fmt["sedol"]]
 
-        if "location" in asset_overrides:
+        if not asset.location and "location" in asset_overrides:
             asset.location = Country.objects.get_or_create(name=asset_overrides["location"])[0]
-        elif "location" in asset_fmt:
+        elif not asset.location and "location" in asset_fmt:
             asset.location = Country.objects.get_or_create(name=row[asset_fmt["location"]])[0]
 
-        if "exchange" in asset_fmt:
+        if not asset.exchange and "exchange" in asset_fmt:
             asset.exchange = Exchange.objects.get_or_create(name=row[asset_fmt["exchange"]])[0]
 
-        if "sector" in asset_fmt:
+        if not asset.sector and "sector" in asset_fmt:
             asset.sector = Sector.objects.get_or_create(name=row[asset_fmt["sector"]])[0]
 
-        if "class" in asset_fmt:
+        if not asset.asset_class and "class" in asset_fmt:
             asset.asset_class = AssetClass.objects.get_or_create(name=row[asset_fmt["class"]])[0]
 
-        if "currency" in asset_fmt:
+        if not asset.currency and "currency" in asset_fmt:
             asset.currency = Currency.objects.get_or_create(name=row[asset_fmt["currency"]])[0]
 
-        if "market_currency" in asset_fmt:
+        if not asset.market_currency and "market_currency" in asset_fmt:
             asset.market_currency = Currency.objects.get_or_create(name=row[asset_fmt["market_currency"]])[0]
 
-        if "fx_rate" in asset_fmt:
+        if not asset.fx_rate and "fx_rate" in asset_fmt:
             asset.fx_rate = float(row[asset_fmt["fx_rate"]].replace(',', ''))
 
         asset.save()
@@ -139,16 +215,16 @@ def process_with_format(instance, reader, fmt):
                     asset=asset,
                     etf=etf
                 )
-                if asset_fmt["weight"]:
+                if "weight" in asset_fmt:
                     asset_in_etf.weight = Decimal(row[asset_fmt["weight"]].replace(',', ''))
 
-                if asset_fmt["market_value"]:
+                if "market_value" in asset_fmt:
                     asset_in_etf.market_value = Decimal(row[asset_fmt["market_value"]].replace(',', ''))
 
-                if asset_fmt["notional_value"]:
+                if "notional_value" in asset_fmt:
                     asset_in_etf.notional_value = Decimal(row[asset_fmt["notional_value"]].replace(',', ''))
 
-                if asset_fmt["shares"]:
+                if "shares" in asset_fmt:
                     asset_in_etf.shares = Decimal(row[asset_fmt["shares"]].replace(',', ''))
 
                 asset_in_etf.save()

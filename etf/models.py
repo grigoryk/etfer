@@ -42,8 +42,9 @@ class RawData(models.Model):
     def __str__(self):
         return "Raw data from %s" % self.provider
 
-class Asset(WithName):
-    ticker = models.CharField(max_length=100)
+class Asset(models.Model):
+    ticker = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=500, blank=True, null=True)
 
     cusip = models.CharField(max_length=100, blank=True, null=True)
     isin = models.CharField(max_length=100, blank=True, null=True)
@@ -64,7 +65,7 @@ class Etf(WithName):
     inception_date = models.DateField(blank=True, null=True)
 
     shares_outstanding = models.PositiveIntegerField(blank=True, null=True)
-    expense_ratio = models.DecimalField(max_digits=5, decimal_places=4, blank=True, null=True)
+    expense_ratio = models.DecimalField(max_digits=5, decimal_places=3, blank=True, null=True)
 
     assets = models.ManyToManyField(Asset, through="AssetInEtf")
 
@@ -78,10 +79,10 @@ class AssetInEtf(models.Model):
     etf = models.ForeignKey(Etf, on_delete=models.CASCADE)
     asset = models.ForeignKey(Asset, on_delete=models.CASCADE)
 
-    market_value = models.DecimalField(max_digits=100, decimal_places=4, blank=True, null=True)
-    weight = models.DecimalField(max_digits=5, decimal_places=4, blank=True, null=True)
-    notional_value = models.DecimalField(max_digits=100, decimal_places=4, blank=True, null=True)
-    shares = models.DecimalField(max_digits=100, decimal_places=4, blank=True, null=True)
+    market_value = models.DecimalField(max_digits=100, decimal_places=3, blank=True, null=True)
+    weight = models.DecimalField(max_digits=5, decimal_places=3, blank=True, null=True)
+    notional_value = models.DecimalField(max_digits=100, decimal_places=3, blank=True, null=True)
+    shares = models.DecimalField(max_digits=100, decimal_places=3, blank=True, null=True)
 
     def price(self):
         return self.market_value / self.shares
@@ -89,8 +90,9 @@ class AssetInEtf(models.Model):
 class Portfolio(WithName):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     etfs = models.ManyToManyField(Etf, through='EtfInPortfolio')
+    value = models.DecimalField(max_digits=100, decimal_places=3, blank=True, null=True)
 
 class EtfInPortfolio(models.Model):
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE)
     etf = models.ForeignKey(Etf, on_delete=models.CASCADE)
-    weight = models.DecimalField(max_digits=5, decimal_places=4)
+    weight = models.DecimalField(max_digits=5, decimal_places=3)

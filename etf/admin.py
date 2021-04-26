@@ -33,4 +33,7 @@ class PortfolioAdmin(admin.ModelAdmin):
 
 admin.site.register(Portfolio, PortfolioAdmin)
 admin.site.register(EtfProvider)
-admin.site.register(RawData)
+
+class RawDataAdmin(admin.ModelAdmin):
+    list_display = ('id', 'provider')
+admin.site.register(RawData, RawDataAdmin)
