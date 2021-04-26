@@ -30,10 +30,10 @@
         </tr>
         </thead>
         <tbody>
-        {% for i in portfolio.etfinportfolio_set.all %}
+        {% for i in etfs.items %}
             <tr>
-                <td>{{ i.etf.name }}</td>
-                <td>{{ i.weight|floatformat:2 }}%</td>
+                <td>{{ i.0 }}</td>
+                <td>{{ i.1|floatformat:2 }}%</td>
             </tr>
         {% endfor %}
         </tbody>

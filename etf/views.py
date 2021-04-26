@@ -54,12 +54,15 @@ def portfolio(request, portfolio_id):
                     etf_list
                 )
 
+    etfs = {e.etf : e.weight for e in p.etfinportfolio_set.all()}
+    sorted_etfs = dict(sorted(etfs.items(), key=lambda item: item[1], reverse=True))
     sorted_assets = dict(sorted(assets.items(), key=lambda item: item[1][0], reverse=True))
     sorted_locations = dict(sorted(locations.items(), key=lambda item: item[1][0], reverse=True))
     sorted_sectors = dict(sorted(sectors.items(), key=lambda item: item[1][0], reverse=True))
 
     return render(request, 'etf/portfolio.html', {
         'portfolio': p,
+        'etfs': sorted_etfs,
         'assets': sorted_assets,
         'locations': sorted_locations,
         'sectors': sorted_sectors
