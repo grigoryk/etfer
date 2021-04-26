@@ -19,7 +19,7 @@
   <body>
 
     <header>
-        <h2>{{ portfolio.name }}</h2>
+        <h2>{{ portfolio.name }} (with ${{ portfolio.value|floatformat:0|intcomma }} invested)</h2>
     </header>
 
     <table class="table table-striped">
@@ -39,7 +39,47 @@
         </tbody>
     </table>
 
-    <h2>Aggregated Holdings (for ${{ portfolio.value|floatformat:0|intcomma }} invested)</h2>
+    <h2>Location Exposure</h2>
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th scope="col">Location</th>
+            <th scope="col">Exposure $</th>
+            <th scope="col">Exposure %</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for location, i in locations.items %}
+            <tr>
+                <td>{{ location.name }}</td>
+                <td>{{ i.0|floatformat:2|intcomma }}</td>
+                <td>{{ i.1|floatformat:4 }}%</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Sector Exposure</h2>
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th scope="col">Sector</th>
+            <th scope="col">Exposure $</th>
+            <th scope="col">Exposure %</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for sector, i in sectors.items %}
+            <tr>
+                <td>{{ sector.name }}</td>
+                <td>{{ i.0|floatformat:2|intcomma }}</td>
+                <td>{{ i.1|floatformat:4 }}%</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Holdings</h2>
 
     <table class="table table-striped">
         <thead>
